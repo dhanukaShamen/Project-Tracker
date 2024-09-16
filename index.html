@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="p-6">
+            <h1 class="text-4xl font-bold text-gray-800 mb-6">Project Tracker</h1>
+            <!-- Project Type Selector -->
+            <div class="mb-6">
+                <label for="projectType" class="block text-lg font-medium text-gray-700 mb-2">Select Project Type</label>
+                <select id="projectType" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring focus:ring-blue-300">
+                    <option value="">Select Project Type</option>
+                    <option value="classFee">Class Fee Management System</option>
+                    <option value="bar">Bar Management System</option>
+                    <option value="gym">Gym Management System</option>
+                    <option value="fitness">Fitness Management System</option>
+                    <option value="plantNursery">Plant Nursery Management System</option>
+                </select>
+            </div>
+
+            <!-- Project Summary -->
+            <div id="projectSummary" class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Project Summary</h2>
+                <div id="progressBars" class="mb-4"></div>
+                <p id="overallProgress" class="text-xl font-bold text-blue-600"></p>
+            </div>
+
+            <!-- Todo List -->
+            <div id="todoList" class="mt-8"></div>
+        </div>
+    </div>
+
+    <script>
+      const projectType = document.getElementById('projectType');
+      const projectSummary = document.getElementById('projectSummary');
+      const progressBars = document.getElementById('progressBars');
+      const overallProgress = document.getElementById('overallProgress');
+      const todoList = document.getElementById('todoList');
+  
+      let projects = JSON.parse(localStorage.getItem('projects')) || {}; // Store progress for all project types
+      let currentProject = null;
+  
+      async function loadTodoList(type) {
+          const response = await fetch(`todo-lists/${type}.md`);
+          return await response.text();
+      }
+  
+      function createCheckbox(task, isCompleted) {
+          return `<input type="checkbox" ${isCompleted ? 'checked' : ''} class="mr-2 focus:ring focus:ring-blue-300">`;
+      }
+  
+      function processMarkdown(markdown, completedTasks) {
+          const lines = markdown.split('\n');
+          let taskIndex = 0;
+          const processedLines = lines.map(line => {
+              if (line.match(/^#{1,6}\s+/)) {
+                  const headingLevel = line.match(/^#{1,6}/)[0].length;
+                  const content = line.replace(/^#{1,6}\s+/, '');
+                  return `<h${headingLevel} class="text-${headingLevel === 1 ? '4xl' : headingLevel === 2 ? '3xl' : headingLevel === 3 ? '2xl' : 'xl'} font-bold text-gray-800 mb-4">${content}</h${headingLevel}>`;
+              }
+  
+              if (line.match(/^(\s*)-\s+/)) {
+                  const indentLevel = (line.match(/^\s*/)[0].length) / 2;
+                  const isCompleted = completedTasks[taskIndex] || false;
+                  taskIndex++;
+                  const checkbox = createCheckbox(line, isCompleted);
+                  return `<li class="flex items-start mb-2 pl-${indentLevel * 4}"><span class="text-lg">${checkbox}${line.trim().substring(1)}</span></li>`;
+              }
+  
+              return `<p class="text-gray-600">${line}</p>`;
+          });
+          return processedLines.join('');
+      }
+  
+      async function renderProject() {
+          if (!currentProject) return;
+  
+          const markdown = await loadTodoList(currentProject.type);
+          const processedMarkdown = processMarkdown(markdown, currentProject.completedTasks || {});
+          todoList.innerHTML = `<ul class="space-y-4">${processedMarkdown}</ul>`;
+  
+          // Add event listeners to checkboxes
+          todoList.querySelectorAll('input[type="checkbox"]').forEach((checkbox, index) => {
+              checkbox.addEventListener('change', () => toggleTask(checkbox, index));
+          });
+  
+          updateProgress();
+      }
+  
+      function updateProgress() {
+          const checkboxes = todoList.querySelectorAll('input[type="checkbox"]');
+          const totalTasks = checkboxes.length;
+          const completedTasks = Array.from(checkboxes).filter(cb => cb.checked).length;
+  
+          const overallPercentage = (completedTasks / totalTasks) * 100;
+          overallProgress.textContent = `Overall Progress: ${overallPercentage.toFixed(2)}%`;
+  
+          progressBars.innerHTML = `
+              <div class="w-full bg-gray-300 rounded-full h-4">
+                  <div class="bg-blue-500 h-4 rounded-full" style="width: ${overallPercentage}%"></div>
+              </div>
+          `;
+  
+          saveProjectProgress();
+      }
+  
+      function toggleTask(checkbox, index) {
+          currentProject.completedTasks[index] = checkbox.checked;
+          updateProgress();
+      }
+  
+      function saveProjectProgress() {
+          // Update the project progress in the projects object
+          projects[currentProject.type] = currentProject;
+          localStorage.setItem('projects', JSON.stringify(projects));
+      }
+  
+      projectType.addEventListener('change', async () => {
+          const selectedType = projectType.value;
+          if (selectedType) {
+              // Check if this project already has saved progress
+              if (!projects[selectedType]) {
+                  projects[selectedType] = { type: selectedType, completedTasks: {} };
+              }
+  
+              currentProject = projects[selectedType]; // Set the current project to the selected one
+              await renderProject(); // Render the selected project
+          }
+      });
+  
+      if (projects[projectType.value]) {
+          currentProject = projects[projectType.value];
+          renderProject();
+      }
+  </script>
+    
+</body>
+</html>
