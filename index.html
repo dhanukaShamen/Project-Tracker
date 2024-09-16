@@ -1,146 +1,313 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Project Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</head>
-<body class="bg-gray-100 p-6">
-    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-        <div class="p-6">
-            <h1 class="text-4xl font-bold text-gray-800 mb-6">Project Tracker Developd By Dhanuak Shamen</h1>
-            <!-- Project Type Selector -->
-            <div class="mb-6">
-                <label for="projectType" class="block text-lg font-medium text-gray-700 mb-2">Select Project Type</label>
-                <select id="projectType" class="w-full p-2 border rounded mb-4">
-                    <option value="">Select Project Type</option>
-                    <option value="classFee">Class Fee Management System</option>
-                    <option value="bar">Bar Management System</option>
-                    <option value="gym">Gym Management System</option>
-                    <option value="fitness">Fitness Management System</option>
-                    <option value="plantNursery">Plant Nursery Management System</option>
-                    <option value="mineralWater">Mineral Water Management System</option>
-                    <option value="drivingSchool">Driving School Management System</option>
-                </select>
-            </div>
-
-            <!-- Project Summary -->
-            <div id="projectSummary" class="mb-8">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Project Summary</h2>
-                <div id="progressBars" class="mb-4"></div>
-                <p id="overallProgress" class="text-xl font-bold text-blue-600"></p>
-            </div>
-
-            <!-- Todo List -->
-            <div id="todoList" class="mt-8"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  </head>
+  <body class="bg-gray-100 p-6">
+    <div
+      class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden"
+    >
+      <div class="p-6">
+        <h1 class="text-4xl font-bold text-gray-800 mb-6">
+          Project Tracker Developd By Dhanuak Shamen
+        </h1>
+        <!-- Project Type Selector -->
+        <div class="mb-6">
+          <label
+            for="projectType"
+            class="block text-lg font-medium text-gray-700 mb-2"
+            >Select Project Type</label
+          >
+          <select id="projectType" class="w-full p-2 border rounded mb-4">
+            <option value="">Select Project Type</option>
+            <option value="classFee">Class Fee Management System</option>
+            <option value="bar">Bar Management System</option>
+            <option value="gym">Gym Management System</option>
+            <option value="fitness">Fitness Management System</option>
+            <option value="plantNursery">
+              Plant Nursery Management System
+            </option>
+            <option value="mineralWater">
+              Mineral Water Management System
+            </option>
+            <option value="drivingSchool">
+              Driving School Management System
+            </option>
+          </select>
         </div>
+
+        <!-- Project Summary -->
+        <div id="projectSummary" class="mb-8">
+          <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+            Project Summary
+          </h2>
+          <div id="progressBars" class="mb-4"></div>
+          <p id="overallProgress" class="text-xl font-bold text-blue-600"></p>
+        </div>
+
+        <!-- Todo List -->
+        <div id="todoList" class="mt-8"></div>
+
+        <!-- Generate Report Button -->
+<div class="mt-8">
+    <button id="generateReport" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        Generate Progress Report
+    </button>
+</div>
+
+<!-- Report Modal -->
+<div id="reportModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Progress Report</h3>
+            <div id="reportContent" class="mt-2 px-7 py-3 text-left"></div>
+            <div class="items-center px-4 py-3 flex justify-between">
+                <button id="exportPDF" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                    Export to PDF
+                </button>
+                <button id="closeModal" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+      </div>
     </div>
 
     <script>
-      const projectType = document.getElementById('projectType');
-      const projectSummary = document.getElementById('projectSummary');
-      const progressBars = document.getElementById('progressBars');
-      const overallProgress = document.getElementById('overallProgress');
-      const todoList = document.getElementById('todoList');
-  
-      let projects = JSON.parse(localStorage.getItem('projects')) || {}; // Store progress for all project types
+      const projectType = document.getElementById("projectType");
+      const projectSummary = document.getElementById("projectSummary");
+      const progressBars = document.getElementById("progressBars");
+      const overallProgress = document.getElementById("overallProgress");
+      const todoList = document.getElementById("todoList");
+
+      let projects = JSON.parse(localStorage.getItem("projects")) || {}; // Store progress for all project types
       let currentProject = null;
-  
+      const exportPDFBtn = document.getElementById('exportPDF');
+
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Set font size and type
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    
+    // Add title
+    doc.text("Project Progress Report", 20, 20);
+    
+    // Reset font for body text
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    
+    // Add project type
+    doc.text(`Project: ${currentProject.type}`, 20, 30);
+    
+    // Add overall progress
+    const checkboxes = todoList.querySelectorAll('input[type="checkbox"]');
+    const totalTasks = checkboxes.length;
+    const completedTasks = Array.from(checkboxes).filter(cb => cb.checked).length;
+    const overallPercentage = (completedTasks / totalTasks) * 100;
+    doc.text(`Overall Progress: ${overallPercentage.toFixed(2)}%`, 20, 40);
+    doc.text(`Completed Tasks: ${completedTasks}/${totalTasks}`, 20, 50);
+    
+    // Add task details
+    doc.setFont("helvetica", "bold");
+    doc.text("Task Details:", 20, 60);
+    doc.setFont("helvetica", "normal");
+    
+    let yPosition = 70;
+    todoList.querySelectorAll('li').forEach((li, index) => {
+        const checkbox = li.querySelector('input[type="checkbox"]');
+        const taskText = li.textContent.trim();
+        const status = checkbox.checked ? "Completed" : "Pending";
+        
+        // Check if we need a new page
+        if (yPosition > 280) {
+            doc.addPage();
+            yPosition = 20;
+        }
+        
+        doc.text(`${taskText} - ${status}`, 20, yPosition);
+        yPosition += 10;
+    });
+    
+    // Save the PDF
+    doc.save(`${currentProject.type}_progress_report.pdf`);
+}
+
+exportPDFBtn.addEventListener('click', exportToPDF);
       async function loadTodoList(type) {
-          const response = await fetch(`todo-lists/${type}.md`);
-          return await response.text();
+        const response = await fetch(`todo-lists/${type}.md`);
+        return await response.text();
       }
-  
+
       function createCheckbox(task, isCompleted) {
-          return `<input type="checkbox" ${isCompleted ? 'checked' : ''} class="mr-2 focus:ring focus:ring-blue-300">`;
+        return `<input type="checkbox" ${
+          isCompleted ? "checked" : ""
+        } class="mr-2 focus:ring focus:ring-blue-300">`;
       }
-  
+
       function processMarkdown(markdown, completedTasks) {
-          const lines = markdown.split('\n');
-          let taskIndex = 0;
-          const processedLines = lines.map(line => {
-              if (line.match(/^#{1,6}\s+/)) {
-                  const headingLevel = line.match(/^#{1,6}/)[0].length;
-                  const content = line.replace(/^#{1,6}\s+/, '');
-                  return `<h${headingLevel} class="text-${headingLevel === 1 ? '4xl' : headingLevel === 2 ? '3xl' : headingLevel === 3 ? '2xl' : 'xl'} font-bold text-gray-800 mb-4">${content}</h${headingLevel}>`;
-              }
-  
-              if (line.match(/^(\s*)-\s+/)) {
-                  const indentLevel = (line.match(/^\s*/)[0].length) / 2;
-                  const isCompleted = completedTasks[taskIndex] || false;
-                  taskIndex++;
-                  const checkbox = createCheckbox(line, isCompleted);
-                  return `<li class="flex items-start mb-2 pl-${indentLevel * 4}"><span class="text-lg">${checkbox}${line.trim().substring(1)}</span></li>`;
-              }
-  
-              return `<p class="text-gray-600">${line}</p>`;
-          });
-          return processedLines.join('');
+        const lines = markdown.split("\n");
+        let taskIndex = 0;
+        const processedLines = lines.map((line) => {
+          if (line.match(/^#{1,6}\s+/)) {
+            const headingLevel = line.match(/^#{1,6}/)[0].length;
+            const content = line.replace(/^#{1,6}\s+/, "");
+            return `<h${headingLevel} class="text-${
+              headingLevel === 1
+                ? "4xl"
+                : headingLevel === 2
+                ? "3xl"
+                : headingLevel === 3
+                ? "2xl"
+                : "xl"
+            } font-bold text-gray-800 mb-4">${content}</h${headingLevel}>`;
+          }
+
+          if (line.match(/^(\s*)-\s+/)) {
+            const indentLevel = line.match(/^\s*/)[0].length / 2;
+            const isCompleted = completedTasks[taskIndex] || false;
+            taskIndex++;
+            const checkbox = createCheckbox(line, isCompleted);
+            return `<li class="flex items-start mb-2 pl-${
+              indentLevel * 4
+            }"><span class="text-lg">${checkbox}${line
+              .trim()
+              .substring(1)}</span></li>`;
+          }
+
+          return `<p class="text-gray-600">${line}</p>`;
+        });
+        return processedLines.join("");
       }
-  
+
       async function renderProject() {
-          if (!currentProject) return;
-  
-          const markdown = await loadTodoList(currentProject.type);
-          const processedMarkdown = processMarkdown(markdown, currentProject.completedTasks || {});
-          todoList.innerHTML = `<ul class="space-y-4">${processedMarkdown}</ul>`;
-  
-          // Add event listeners to checkboxes
-          todoList.querySelectorAll('input[type="checkbox"]').forEach((checkbox, index) => {
-              checkbox.addEventListener('change', () => toggleTask(checkbox, index));
+        if (!currentProject) return;
+
+        const markdown = await loadTodoList(currentProject.type);
+        const processedMarkdown = processMarkdown(
+          markdown,
+          currentProject.completedTasks || {}
+        );
+        todoList.innerHTML = `<ul class="space-y-4">${processedMarkdown}</ul>`;
+
+        // Add event listeners to checkboxes
+        todoList
+          .querySelectorAll('input[type="checkbox"]')
+          .forEach((checkbox, index) => {
+            checkbox.addEventListener("change", () =>
+              toggleTask(checkbox, index)
+            );
           });
-  
-          updateProgress();
+
+        updateProgress();
       }
-  
+
       function updateProgress() {
-          const checkboxes = todoList.querySelectorAll('input[type="checkbox"]');
-          const totalTasks = checkboxes.length;
-          const completedTasks = Array.from(checkboxes).filter(cb => cb.checked).length;
-  
-          const overallPercentage = (completedTasks / totalTasks) * 100;
-          overallProgress.textContent = `Overall Progress: ${overallPercentage.toFixed(2)}%`;
-  
-          progressBars.innerHTML = `
+        const checkboxes = todoList.querySelectorAll('input[type="checkbox"]');
+        const totalTasks = checkboxes.length;
+        const completedTasks = Array.from(checkboxes).filter(
+          (cb) => cb.checked
+        ).length;
+
+        const overallPercentage = (completedTasks / totalTasks) * 100;
+        overallProgress.textContent = `Overall Progress: ${overallPercentage.toFixed(
+          2
+        )}%`;
+
+        progressBars.innerHTML = `
               <div class="w-full bg-gray-300 rounded-full h-4">
                   <div class="bg-blue-500 h-4 rounded-full" style="width: ${overallPercentage}%"></div>
               </div>
           `;
-  
-          saveProjectProgress();
+
+        saveProjectProgress();
       }
-  
+
       function toggleTask(checkbox, index) {
-          currentProject.completedTasks[index] = checkbox.checked;
-          updateProgress();
+        currentProject.completedTasks[index] = checkbox.checked;
+        updateProgress();
       }
-  
+
       function saveProjectProgress() {
-          // Update the project progress in the projects object
-          projects[currentProject.type] = currentProject;
-          localStorage.setItem('projects', JSON.stringify(projects));
+        // Update the project progress in the projects object
+        projects[currentProject.type] = currentProject;
+        localStorage.setItem("projects", JSON.stringify(projects));
       }
-  
-      projectType.addEventListener('change', async () => {
-          const selectedType = projectType.value;
-          if (selectedType) {
-              // Check if this project already has saved progress
-              if (!projects[selectedType]) {
-                  projects[selectedType] = { type: selectedType, completedTasks: {} };
-              }
-  
-              currentProject = projects[selectedType]; // Set the current project to the selected one
-              await renderProject(); // Render the selected project
+
+      projectType.addEventListener("change", async () => {
+        const selectedType = projectType.value;
+        if (selectedType) {
+          // Check if this project already has saved progress
+          if (!projects[selectedType]) {
+            projects[selectedType] = { type: selectedType, completedTasks: {} };
           }
+
+          currentProject = projects[selectedType]; // Set the current project to the selected one
+          await renderProject(); // Render the selected project
+        }
       });
-  
+
       if (projects[projectType.value]) {
-          currentProject = projects[projectType.value];
-          renderProject();
+        currentProject = projects[projectType.value];
+        renderProject();
       }
-  </script>
-    
-</body>
+
+      const generateReportBtn = document.getElementById('generateReport');
+const reportModal = document.getElementById('reportModal');
+const reportContent = document.getElementById('reportContent');
+const closeModal = document.getElementById('closeModal');
+
+function generateReport() {
+    if (!currentProject) {
+        alert("Please select a project type first.");
+        return;
+    }
+
+    const checkboxes = todoList.querySelectorAll('input[type="checkbox"]');
+    const totalTasks = checkboxes.length;
+    const completedTasks = Array.from(checkboxes).filter(cb => cb.checked).length;
+    const overallPercentage = (completedTasks / totalTasks) * 100;
+
+    let report = `<h4 class="text-xl font-bold mb-2">Project: ${currentProject.type}</h4>`;
+    report += `<p class="mb-4">Overall Progress: ${overallPercentage.toFixed(2)}%</p>`;
+    report += `<p class="mb-2">Completed Tasks: ${completedTasks}/${totalTasks}</p>`;
+    report += `<h5 class="text-lg font-semibold mt-4 mb-2">Task Details:</h5>`;
+    report += `<ul class="list-disc pl-5">`;
+
+    todoList.querySelectorAll('li').forEach((li, index) => {
+        const checkbox = li.querySelector('input[type="checkbox"]');
+        const taskText = li.textContent.trim();
+        const status = checkbox.checked ? "Completed" : "Pending";
+        report += `<li class="mb-1">${taskText} - <span class="${checkbox.checked ? 'text-green-600' : 'text-red-600'}">${status}</span></li>`;
+    });
+
+    report += `</ul>`;
+
+    reportContent.innerHTML = report;
+    reportModal.classList.remove('hidden');
+}
+
+generateReportBtn.addEventListener('click', generateReport);
+
+closeModal.addEventListener('click', () => {
+    reportModal.classList.add('hidden');
+});
+
+// Close the modal if clicking outside of it
+window.addEventListener('click', (e) => {
+    if (e.target === reportModal) {
+        reportModal.classList.add('hidden');
+    }
+});
+    </script>
+  </body>
 </html>
